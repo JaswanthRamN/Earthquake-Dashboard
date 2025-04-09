@@ -2,8 +2,9 @@ import streamlit as st
 # Set page config with theme options - MUST BE THE FIRST STREAMLIT COMMAND
 st.set_page_config(
     layout="wide",
-    page_title="USGS Earthquake Dashboard",
-    page_icon="🌍"
+    page_title="🌍 USGS Earthquake Dashboard",
+    page_icon="🌍",
+    initial_sidebar_state="expanded"
 )
 
 from seaborn import set_style
@@ -78,12 +79,16 @@ def fetch_usgs_data():
             properties = feature['properties']
             geometry = feature['geometry']
             
+            # Skip entries with missing or invalid magnitude
+            if properties['mag'] is None:
+                continue
+                
             earthquake = {
                 'time': pd.to_datetime(properties['time'], unit='ms'),
                 'latitude': geometry['coordinates'][1],
                 'longitude': geometry['coordinates'][0],
                 'depth': geometry['coordinates'][2],
-                'mag': properties['mag'],
+                'mag': float(properties['mag']),  # Ensure magnitude is a float
                 'place': properties['place'],
                 'type': properties['type'],
                 'alert': properties.get('alert', None),
@@ -145,7 +150,7 @@ df = load_data()
 
 # --- Dashboard Layout ---
 # Theme toggle
-theme = st.sidebar.radio("Select Theme", ["Light", "Dark"])
+theme = st.sidebar.radio("🎨 Select Theme", ["Light", "Dark"])
 if theme == "Dark":
     st.markdown("""
         <style>
@@ -157,6 +162,12 @@ if theme == "Dark":
             background-color: #262730;
             padding: 10px;
             border-radius: 5px;
+        }
+        .info-box {
+            background-color: #262730;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -171,6 +182,13 @@ else:
             background-color: #F0F2F6;
             padding: 10px;
             border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .info-box {
+            background-color: #F0F2F6;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
             box-shadow: 0 1px 3px rgba(0,0,0,0.12);
         }
         .stButton>button {
@@ -196,14 +214,39 @@ else:
         </style>
     """, unsafe_allow_html=True)
 
-st.title('USGS Earthquake Dashboard (Last 30 Days)')
+# Main title and introduction
+st.title('🌍 USGS Earthquake Dashboard')
+st.markdown("""
+<div class='info-box'>
+    <h3>📊 About This Dashboard</h3>
+    <p>This interactive dashboard displays real-time earthquake data from the USGS (United States Geological Survey). 
+    You can explore earthquakes from the last 30 days with various visualization options and filters.</p>
+    
+    <h4>🔍 Key Features:</h4>
+    <ul>
+        <li>Interactive global map with multiple view options</li>
+        <li>Time series analysis of earthquake frequency</li>
+        <li>Regional analysis and statistics</li>
+        <li>Customizable filters for detailed exploration</li>
+        <li>Real-time data updates</li>
+    </ul>
+    
+    <h4>💡 How to Use:</h4>
+    <ol>
+        <li>Use the sidebar filters to customize your view</li>
+        <li>Switch between different map visualizations</li>
+        <li>Explore the various analysis tabs</li>
+        <li>Download filtered data for further analysis</li>
+    </ol>
+</div>
+""", unsafe_allow_html=True)
 
-# Add a header image
+# Add a header image with better styling
 st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Seismogram.svg/1200px-Seismogram.svg.png", 
-         caption="Earthquake Seismogram", use_column_width=True)
+         caption="Earthquake Seismogram - Visual representation of seismic waves", use_column_width=True)
 
 if not df.empty:
-    # Add data refresh button and last refresh time
+    # Add data refresh button and last refresh time with better styling
     col1, col2 = st.columns([1, 5])
     with col1:
         if st.button("🔄 Refresh Data"):
@@ -212,19 +255,21 @@ if not df.empty:
             st.rerun()
     
     with col2:
-        st.write(f"Last updated: {st.session_state.last_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
+        st.markdown(f"<p style='color: #666;'>Last updated: {st.session_state.last_refresh.strftime('%Y-%m-%d %H:%M:%S')}</p>", 
+                   unsafe_allow_html=True)
     
     st.markdown("Visualizing recent earthquake data from USGS.")
 
     # --- Sidebar Filters ---
-    st.sidebar.header("Filters")
+    st.sidebar.header("🔍 Filters")
     
-    # Reset filters button
-    if st.sidebar.button("Reset All Filters"):
+    # Reset filters button with better styling
+    if st.sidebar.button("🔄 Reset All Filters"):
         st.rerun()
 
-    # Search box for locations
-    search_query = st.sidebar.text_input("Search Location", placeholder="Enter location name...")
+    # Search box for locations with better placeholder
+    search_query = st.sidebar.text_input("🔎 Search Location", 
+                                       placeholder="Enter city, country, or region...")
     if search_query:
         # Case-insensitive search in place column
         search_results = df[df['place'].str.lower().str.contains(search_query.lower(), na=False)]
@@ -236,10 +281,10 @@ if not df.empty:
         else:
             st.sidebar.write("No matches found")
 
-    # Advanced filtering options
-    st.sidebar.subheader("Advanced Filters")
+    # Advanced filtering options with better organization
+    st.sidebar.subheader("📅 Time Filters")
     
-    # Time Range Filter with time selection
+    # Time Range Filter with better labels
     min_time = df['time'].min()
     max_time = df['time'].max()
     
@@ -249,14 +294,16 @@ if not df.empty:
             "Start Date",
             value=min_time.date(),
             min_value=min_time.date(),
-            max_value=max_time.date()
+            max_value=max_time.date(),
+            help="Select the start date for the data range"
         )
     with col2:
         end_date = st.date_input(
             "End Date",
             value=max_time.date(),
             min_value=min_time.date(),
-            max_value=max_time.date()
+            max_value=max_time.date(),
+            help="Select the end date for the data range"
         )
     
     # Time of day filter
@@ -293,10 +340,19 @@ if not df.empty:
     all_regions = sorted(df['region'].unique())
     selected_regions = st.sidebar.multiselect("Select Regions", options=all_regions, default=all_regions)
     
-    # Map Style Selector
+    # Map Style Selector with better organization
+    st.sidebar.subheader("🗺️ Map Settings")
     map_style = st.sidebar.selectbox(
         "Select Map Style",
-        ["open-street-map", "satellite", "dark", "light", "terrain"]
+        ["open-street-map", "satellite", "dark", "light", "terrain"],
+        help="Choose the visual style of the map"
+    )
+    
+    # Map View Options with better labels
+    map_view = st.sidebar.radio(
+        "Map View Type",
+        ["Scatter", "Cluster", "Heatmap", "3D"],
+        help="Choose how to display the earthquakes on the map"
     )
     
     # Additional filters
@@ -322,9 +378,6 @@ if not df.empty:
     # Filter by felt reports
     felt_filter = st.sidebar.checkbox("Show only felt earthquakes", value=False)
 
-    # Map View Options
-    map_view = st.sidebar.radio("Map View", ["Scatter", "Cluster", "Heatmap", "3D"])
-    
     # Significant Earthquake Alert Threshold
     significant_mag_threshold = st.sidebar.slider(
         "Significant Earthquake Alert Threshold",
@@ -345,7 +398,10 @@ if not df.empty:
         (df['region'].isin(selected_regions)) &
         (df['type'].isin(selected_types)) &
         (df['significance'] >= significance_threshold)
-    ]
+    ].copy()  # Create a copy to avoid SettingWithCopyWarning
+    
+    # Update viz_size after filtering
+    filtered_df['viz_size'] = filtered_df['mag'].abs()
     
     # Apply time of day filter
     if time_ranges:
@@ -367,15 +423,6 @@ if not df.empty:
 
     st.sidebar.metric("Filtered Earthquakes", len(filtered_df))
     
-    # Download filtered data
-    csv = filtered_df.to_csv(index=False)
-    st.sidebar.download_button(
-        label="Download Filtered Data (CSV)",
-        data=csv,
-        file_name="filtered_earthquakes.csv",
-        mime="text/csv"
-    )
-    
     # Export visualizations
     st.sidebar.subheader("Export Options")
     if st.sidebar.button("Export Dashboard as Image"):
@@ -385,35 +432,44 @@ if not df.empty:
     # --- Add dashboard elements below ---
     st.header("Global Earthquake Map")
 
-    # Create tabs for different sections
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Map View", "Time Analysis", "Regional Analysis", "Statistics", "Raw Data"])
+    # Create tabs for different sections with better organization
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🗺️ Map View", "⏰ Time Analysis", "🌍 Regional Analysis", "📊 Statistics", "📋 Raw Data"])
     
     with tab1:
+        st.markdown("""
+        <div class='info-box'>
+            <h4>🗺️ Map Visualization Options:</h4>
+            <ul>
+                <li><b>Scatter:</b> Individual points for each earthquake</li>
+                <li><b>Cluster:</b> Grouped points for better visibility in dense areas</li>
+                <li><b>Heatmap:</b> Intensity map showing earthquake density</li>
+                <li><b>3D:</b> Three-dimensional view including depth</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
         # Create map based on selected view
         if map_view == "Scatter":
             # Create the Plotly Express map with enhanced features
-            # Ensure all magnitude values are positive for visualization
-            filtered_df['viz_size'] = filtered_df['mag'].abs()
-            
             fig_map = px.scatter_mapbox(
                 filtered_df,
                 lat="latitude",
                 lon="longitude",
-                size="viz_size",  # Use absolute magnitude for size
-                color="depth", # Point color based on depth
-                hover_name="place", # Show place name on hover
+                size="viz_size",
+                color="depth",
+                hover_name="place",
                 hover_data={
                     "mag": ":.2f",
                     "depth": ":.1f",
                     "time": True,
                     "latitude": False,
                     "longitude": False,
-                    "viz_size": False  # Hide the visualization size column
+                    "viz_size": False
                 },
-                color_continuous_scale=px.colors.sequential.Viridis_r, # Color scale (reversed Viridis)
-                size_max=20, # Increased max point size
-                zoom=1, # Initial zoom level
-                mapbox_style=map_style, # Dynamic map style
+                color_continuous_scale=px.colors.sequential.Viridis_r,
+                size_max=15,  # Refined max point size for clarity
+                zoom=1,
+                mapbox_style=map_style,
                 title="Earthquakes (Size=Magnitude, Color=Depth)"
             )
             
@@ -429,6 +485,18 @@ if not df.empty:
             )
             
             st.plotly_chart(fig_map, use_container_width=True)
+            
+            # Add legend and explanation
+            st.markdown("""
+            <div class='info-box'>
+                <h4>📊 Map Legend:</h4>
+                <ul>
+                    <li><b>Point Size:</b> Represents earthquake magnitude</li>
+                    <li><b>Color:</b> Represents depth (darker = deeper)</li>
+                    <li><b>Hover:</b> Click on points for detailed information</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
         
         elif map_view == "Cluster":
             # Create a Folium map with marker clusters
@@ -498,14 +566,23 @@ if not df.empty:
             st.write(f"- **{quake['place']}** (Mag: {quake['mag']:.1f}, Depth: {quake['depth']:.1f} km, Time: {quake['time']})")
 
     with tab2:
-        # Add time series plot
-        st.header("Earthquake Frequency Over Time")
+        st.markdown("""
+        <div class='info-box'>
+            <h4>⏰ Time Analysis Features:</h4>
+            <ul>
+                <li>Daily, hourly, and weekly earthquake frequency</li>
+                <li>Trend analysis and patterns</li>
+                <li>Time-based filtering options</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Time series options
+        # Time series options with better organization
         time_series_option = st.radio(
-            "Time Series View",
+            "Select Time Scale",
             ["Daily", "Hourly", "Weekly"],
-            horizontal=True
+            horizontal=True,
+            help="Choose the time scale for the analysis"
         )
         
         if time_series_option == "Daily":
@@ -572,6 +649,17 @@ if not df.empty:
             st.info("Not enough data points for trend analysis.")
 
     with tab3:
+        st.markdown("""
+        <div class='info-box'>
+            <h4>🌍 Regional Analysis Features:</h4>
+            <ul>
+                <li>Geographic distribution of earthquakes</li>
+                <li>Regional statistics and comparisons</li>
+                <li>Depth and magnitude patterns by region</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
         # Add region heatmap
         st.header("Earthquake Density by Region")
         region_counts = filtered_df['region'].value_counts().reset_index()
@@ -642,6 +730,17 @@ if not df.empty:
             st.info("No data to display distributions for the current filter settings.")
 
     with tab4:
+        st.markdown("""
+        <div class='info-box'>
+            <h4>📊 Statistical Analysis:</h4>
+            <ul>
+                <li>Summary statistics for selected data</li>
+                <li>Magnitude and depth distributions</li>
+                <li>Correlation analysis</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
         st.header("Data Overview")
         # Display some key metrics based on filtered data
         st.subheader("Filtered Data Metrics")
@@ -675,6 +774,17 @@ if not df.empty:
             st.info("No earthquakes match the current filter settings.")
 
     with tab5:
+        st.markdown("""
+        <div class='info-box'>
+            <h4>📋 Raw Data Features:</h4>
+            <ul>
+                <li>Complete dataset with all details</li>
+                <li>Sortable and filterable columns</li>
+                <li>Export options for further analysis</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
         # Display the filtered data in a table with pagination
         st.header("Filtered Earthquake Data")
         # Select and rename columns for better readability
@@ -706,7 +816,7 @@ if not df.empty:
 else:
     st.warning("Could not load earthquake data to build the dashboard.") 
 
-# Add a footer
+# Add a footer with additional information
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; padding: 20px;'>
