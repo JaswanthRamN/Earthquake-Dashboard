@@ -19,8 +19,8 @@ An interactive dashboard for visualizing and analyzing earthquake data from the 
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/earthquake-dashboard.git
-   cd earthquake-dashboard
+   git clone https://github.com/JaswanthRamN/Earthquake-Dashboard.git
+   cd Earthquake-Dashboard
    ```
 
 2. Install the required dependencies:
