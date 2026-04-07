@@ -7,12 +7,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-from seaborn import set_style
 import pandas as pd
 import plotly.express as px # type: ignore
 import plotly.graph_objects as go # type: ignore # For more custom plots if needed
 import numpy as np
 from datetime import datetime, timedelta
+import math
 import folium # type: ignore
 from streamlit_folium import folium_static # type: ignore
 from folium.plugins import MarkerCluster, HeatMap # type: ignore
@@ -94,7 +94,7 @@ def fetch_usgs_data():
                 'alert': properties.get('alert', None),
                 'tsunami': properties.get('tsunami', 0),
                 'felt': properties.get('felt', 0),
-                'significance': properties.get('significance', 0)
+                'significance': properties.get('sig', 0)
             }
             earthquakes.append(earthquake)
         
@@ -243,7 +243,7 @@ st.markdown("""
 
 # Add a header image with better styling
 st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Seismogram.svg/1200px-Seismogram.svg.png", 
-         caption="Earthquake Seismogram - Visual representation of seismic waves", use_column_width=True)
+         caption="Earthquake Seismogram - Visual representation of seismic waves", use_container_width=True)
 
 if not df.empty:
     # Add data refresh button and last refresh time with better styling
@@ -800,18 +800,30 @@ if not df.empty:
             'felt': 'Felt Reports'
         }
         
-        # Add pagination
-        page_size = 10
-        total_pages = len(filtered_df) // page_size + (1 if len(filtered_df) % page_size > 0 else 0)
-        page = st.number_input('Page', min_value=1, max_value=total_pages, value=1)
-        
-        start_idx = (page - 1) * page_size
-        end_idx = start_idx + page_size
-        
-        st.dataframe(
-            filtered_df[display_columns.keys()].rename(columns=display_columns).iloc[start_idx:end_idx],
-            use_container_width=True
-        )
+        if filtered_df.empty:
+            st.info("No earthquakes match the current filter settings.")
+        else:
+            # CSV download button
+            csv_data = filtered_df[display_columns.keys()].rename(columns=display_columns).to_csv(index=False)
+            st.download_button(
+                label="⬇️ Download Filtered Data as CSV",
+                data=csv_data,
+                file_name="earthquakes_filtered.csv",
+                mime="text/csv"
+            )
+            
+            # Add pagination
+            page_size = 10
+            total_pages = max(1, math.ceil(len(filtered_df) / page_size))
+            page = st.number_input('Page', min_value=1, max_value=total_pages, value=1)
+            
+            start_idx = (page - 1) * page_size
+            end_idx = start_idx + page_size
+            
+            st.dataframe(
+                filtered_df[display_columns.keys()].rename(columns=display_columns).iloc[start_idx:end_idx],
+                use_container_width=True
+            )
 
 else:
     st.warning("Could not load earthquake data to build the dashboard.") 
